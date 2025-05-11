@@ -38,7 +38,7 @@ genres=c("Album jeunesse", "Art", "Bande dessinée", "Langue", "Littérature", "
 
 
 # ==============================================================================
-#                              Interface utilisateur
+#                             Interface utilisateur
 # ==============================================================================
 
 
@@ -86,27 +86,28 @@ ui <- dashboardPage(
 #                                    Page 2
 # ------------------------------------------------------------------------------
 
-tabItem(
-  tabName = "rangement",
-  fluidRow(
-    box(
-      title = "Ranger les livres dans la bibliothèque",
-      status = "primary",
-      width = 12,
-      solidHeader = TRUE,
-      fluidRow(
-        column(4,
-          selectInput(inputId = "tri", label = "Trier par", choices = c("Auteur", "Date", "Genre", "Titre"), selected = "Date")),
-        column(4,
-          selectInput(inputId = "genres", label = "Genre", choices = genres, selected = "Littérature")),
-        column(4,
-          selectInput(inputId = "tri_genres", label = "Trier le genre par", choices = c("Auteur", "Date", "Titre"), selected = "Date")),
-        br(), br(),
-        DTOutput("table_tri")
-      )
-    ),
-  )
-),
+      tabItem(
+        tabName = "rangement",
+        fluidRow(
+          box(
+            title = "Ranger les livres dans la bibliothèque",
+            status = "primary",
+            width = 12,
+            solidHeader = TRUE,
+            fluidRow(
+              column(4,
+                selectInput(inputId = "tri", label = "Trier par", choices = c("Auteur", "Date", "Genre", "Titre"), selected = "Date")),
+              uiOutput("conditional_input_genre"
+                
+              ),
+              br(), br(),
+              column(12,
+                DTOutput("table_tri")
+              )
+            )
+          )
+        )
+      ),
 
 
 # ------------------------------------------------------------------------------
@@ -163,16 +164,34 @@ server <- function(input, output) {
 #                                    Page 2
 # ------------------------------------------------------------------------------
   
+  output$conditional_input_genre <- renderUI({
+    if (input$tri == "Genre") {
+      column(8,
+        column(6,
+          selectInput(inputId = "genres", label = "Genre", choices = genres, selected = "Littérature")),
+        column(6,
+          selectInput(inputId = "tri_genres", label = "Trier le genre par", choices = c("Auteur", "Date", "Titre"), selected = "Date"))
+      )
+    }
+  })
+  
   output$table_tri <- renderDT({
     req(input$tri, input$library_csv)
     
-    df_tri = read_xlsx(input$library_csv$datapath, col_names = TRUE)
+    df = read_xlsx(input$library_csv$datapath, col_names = TRUE)
     
-    df_tri %>%
-      select("Titre", "Auteur", "Date") %>%
-      arrange(!!rlang::sym(input$tri))
+    df_tri = df %>%
+      arrange(!!sym(input$tri))
     
-    datatable(df_tri, options = list(scrollX = TRUE, pageLenght = 50), rownames = FALSE)
+    if (!!sym(input$tri) == "Genre") {
+      req(input$genres, input$tri_genres)
+      
+      df_tri = df_tri %>%
+        filter(Genre == input$genres) %>%
+        arrange(!!sym(input$tri_genres))
+    }
+    
+    datatable(select(df_tri, "Titre", "Auteur", "Date"), options = list(scrollX = TRUE, pageLenght = 5), rownames = FALSE)
       
     
     

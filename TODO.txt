@@ -1,6 +1,6 @@
-- Page 2 : 2 selectInput conditionnel si "Genres" choisi dans le premier input : 
+- Page 2 : 2 selectInput conditionnel si "Genres" choisi dans le premier input : OK
 	- premier input - "Genre" : choix du genre
 	- deuxième input - "Trier le genre par" : Auteur, Date, Titre : Date par défaut
-- Page 2 : afficher le dt table avec le tri effectué en fonction du premier input (que les trois premières colonnes)
-- Page 2 : afficher le dt table avec le tri effectué et le thème correspondant si "Genres" choisi dans le premier input
+- Page 2 : afficher le dt table avec le tri effectué en fonction du premier input (que les trois premières colonnes) : OK
+- Page 2 : afficher le dt table avec le tri effectué et le thème correspondant si "Genres" choisi dans le premier input : OK
 - Page 4 : Faire la spinner wheel
