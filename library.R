@@ -14,6 +14,7 @@ library(openxlsx)
 library(readxl)
 library(dplyr)
 library(rlang)
+library(htmltools)
 
 
 # ==============================================================================
@@ -117,12 +118,62 @@ ui <- dashboardPage(
       tabItem(
         tabName = "statistiques",
         fluidRow(
+          column(4,
+            box(
+              title = "Nombre de livres",
+              status = "primary",
+              solidHeader = TRUE,
+              width = 12,
+              h2(textOutput(outputId = "nb_livres"))
+            )
+          ),
+          column(4,
+            box(
+              title = "Nombre de livres lus",
+              status = "primary",
+              solidHeader = TRUE,
+              width = 12,
+              h2(textOutput(outputId = "nb_livres_lus"))
+            )
+          ),
+          column(4,
+            box(
+              title = "Nombre de livres aimés",
+              status = "primary",
+              solidHeader = TRUE,
+              width = 12,
+              h2(textOutput(outputId = "nb_livres_aimes"))
+            ),
+          )
+        ),
+        fluidRow(
           box(
-            title = "Statistiques",
+            title = "Statistiques sur l'auteur",
             status = "primary",
             width = 12,
-            solidHeader = TRUE
-            
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            collapsed = TRUE
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Statistiques sur le genre",
+            status = "primary",
+            width = 12,
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            collapsed = TRUE
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Statistiques sur la langue",
+            status = "primary",
+            width = 12,
+            solidHeader = TRUE,
+            collapsible = TRUE,
+            collapsed = TRUE
           )
         )
       ),
@@ -154,9 +205,9 @@ server <- function(input, output) {
   output$table_data <- renderDT({
     req(input$library_csv)
     
-    df = read_xlsx(input$library_csv$datapath, col_names = TRUE)
+    data_library = read_xlsx(input$library_csv$datapath, col_names = TRUE)
     
-    datatable(df, options = list(scrollX = TRUE, pageLength = 50), rownames = FALSE)
+    datatable(data_library, options = list(scrollX = TRUE, pageLength = 50), rownames = FALSE)
   })
 
     
@@ -178,23 +229,19 @@ server <- function(input, output) {
   output$table_tri <- renderDT({
     req(input$tri, input$library_csv)
     
-    df = read_xlsx(input$library_csv$datapath, col_names = TRUE)
-    
-    df_tri = df %>%
+    data_library_tri = read_xlsx(input$library_csv$datapath, col_names = TRUE)  %>%
       arrange(!!sym(input$tri))
     
     if (!!sym(input$tri) == "Genre") {
       req(input$genres, input$tri_genres)
       
-      df_tri = df_tri %>%
+      data_library_tri = data_library_tri %>%
         filter(Genre == input$genres) %>%
         arrange(!!sym(input$tri_genres))
     }
     
-    datatable(select(df_tri, "Titre", "Auteur", "Date"), options = list(scrollX = TRUE, pageLenght = 5), rownames = FALSE)
+    datatable(select(data_library_tri, "Titre", "Auteur", "Date"), options = list(scrollX = TRUE, pageLenght = 5), rownames = FALSE)
       
-    
-    
   })
   
   
@@ -202,10 +249,44 @@ server <- function(input, output) {
 #                                    Page 3
 # ------------------------------------------------------------------------------
   
+  # Ne marche pas
+  
+  output$nb_livres <- renderText(
+    req(input$library_csv)
+    
+    data_library = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
+      filter(data_library$Livre.principal == "Oui")
+    
+    paste0(nrow(data_library), " livres")
+    
+  )
+  
+  output$nb_livres_lus <- renderText({
+    req(input$library_csv)
+    
+    data_library_lus = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
+      filter(data_library_lus$Livre.principal == "Oui", data_library_lus$Lu=="Oui")
+    
+    paste0(nrow(data_library_lus), " livres lus")
+    
+  })
+  
+  output$nb_livres_aimes <- renderText({
+    req(input$library_csv)
+    
+    data_library = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
+      filter(data_library$Livre.principal == "Oui", data_library$Favoris=="Oui")
+    
+    data=data_library
+    
+    paste0(nrow(data_library), " livres aimés", nrow(data))
+    
+  })
   
 # ------------------------------------------------------------------------------
 #                                    Page 4
 # ------------------------------------------------------------------------------
+  
   
   
 }
