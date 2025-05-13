@@ -1,3 +1,4 @@
+
 # ==============================================================================
 #                            Chargement des packages
 # ==============================================================================
@@ -22,13 +23,6 @@ library(htmltools)
 
 
 # ==============================================================================
-#                            Définition des chemins
-# ==============================================================================
-
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-
-
-# ==============================================================================
 #                                  Variables
 # ==============================================================================
 
@@ -38,6 +32,26 @@ genres <- c("Album jeunesse", "Art", "Bande dessinée", "Langue", "Littérature"
 wheel_colors <- c("#8b35bc", "#b163da", "#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F3", "#33FFF3")
 wheel_labels <- c("Violet", "Lilas", "Orange", "Vert", "Bleu", "Jaune", "Rose", "Cyan")
 
+
+# ==============================================================================
+#                                  Fonctions
+# ==============================================================================
+
+clean_variable_name <- function(x) {
+  x %>%
+    tolower() %>%
+    stringi::stri_trans_general("Latin-ASCII") %>%  # Supprime accents
+    str_replace_all("[^a-z0-9]", "_") %>%           # Remplace tout le reste par des _
+    str_replace_all("_+", "_") %>%                  # Évite les doublons de underscores
+    str_replace_all("^_|_$", "")                    # Supprime les _ au début/fin
+}
+
+
+# ==============================================================================
+# ------------------------------------------------------------------------------
+#                                  Application
+# ------------------------------------------------------------------------------
+# ==============================================================================
 
 # ==============================================================================
 #                             Interface utilisateur
@@ -133,14 +147,23 @@ ui <- dashboardPage(
           font-weight: bold;
           text-align: center;
         }
+        
+        .text-stat {
+          text-align: center;
+          font-family: Baskerville Old;
+          font-size: 25px;
+        }
+        
       "))
     ),
 
     tabItems(
 
-      # ------------------------------------------------------------------------------
-      #                                    Page 1
-      # ------------------------------------------------------------------------------
+      
+# ------------------------------------------------------------------------------
+#                                    Page 1
+# ------------------------------------------------------------------------------
+
       tabItem(
         tabName = "bibliotheque",
         fluidRow(
@@ -155,9 +178,11 @@ ui <- dashboardPage(
         )
       ),
 
-      # ------------------------------------------------------------------------------
-      #                                    Page 2
-      # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+#                                    Page 2
+# ------------------------------------------------------------------------------
+
       tabItem(
         tabName = "rangement",
         fluidRow(
@@ -168,20 +193,23 @@ ui <- dashboardPage(
             solidHeader = TRUE,
             fluidRow(
               column(4,
-                     selectInput("tri", "Trier par", choices = c("Auteur", "Date", "Genre", "Titre"), selected = "Date")),
+                selectInput("tri", "Trier par", choices = c("Auteur", "Date", "Genre", "Titre"), selected = "Date")),
               column(4,
-                     selectInput("genres", "Genre", choices = genres, selected = "Littérature")),
+                uiOutput("conditional_input_genre_genre")),
               column(4,
-                     selectInput("tri_genres", "Trier le genre par", choices = c("Auteur", "Date", "Titre"), selected = "Date"))
+                uiOutput("conditional_input_genre_tri"))
+              
             ),
             DTOutput("table_tri")
           )
         )
       ),
 
-      # ------------------------------------------------------------------------------
-      #                                    Page 3
-      # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+#                                    Page 3
+# ------------------------------------------------------------------------------
+
       tabItem(
         tabName = "statistiques",
         fluidRow(
@@ -191,7 +219,7 @@ ui <- dashboardPage(
               status = "primary",
               solidHeader = TRUE,
               width = 12,
-              h2(textOutput(outputId = "nb_livres"))
+              h2(textOutput(outputId = "nb_livres"), class = "text-stat")
             )
           ),
           column(4,
@@ -200,7 +228,7 @@ ui <- dashboardPage(
               status = "primary",
               solidHeader = TRUE,
               width = 12,
-              h2(textOutput(outputId = "nb_livres_lus"))
+              h2(textOutput(outputId = "nb_livres_lus"), class = "text-stat")
             )
           ),
           column(4,
@@ -209,8 +237,45 @@ ui <- dashboardPage(
               status = "primary",
               solidHeader = TRUE,
               width = 12,
-              h2(textOutput(outputId = "nb_livres_aimes"))
+              h2(textOutput(outputId = "nb_livres_aimes"), class = "text-stat")
             ),
+          )
+        ),
+        fluidRow(
+          column(4,
+                 box(
+                   title = "Nombre d'auteurs différents",
+                   status = "primary",
+                   solidHeader = TRUE,
+                   width = 12,
+                   h2(textOutput(outputId = "nb_auteurs"), class = "text-stat")
+                 )
+          ),
+          column(4,
+                 box(
+                   title = "Nombre de genres différents",
+                   status = "primary",
+                   solidHeader = TRUE,
+                   width = 12,
+                   h2(textOutput(outputId = "nb_genres"), class = "text-stat")
+                 )
+          ),
+          column(4,
+                 box(
+                   title = "Nombre de pages lus",
+                   status = "primary",
+                   solidHeader = TRUE,
+                   width = 12,
+                   h2(textOutput(outputId = "nb_pages_lues"), class = "text-stat")
+                 ),
+          )
+        ),
+        fluidRow(
+          column(6,
+            plotOutput("plot_livres_genres")
+          ),
+          column(6,
+            plotOutput("plot_pages_genres")
           )
         ),
         fluidRow(
@@ -245,9 +310,11 @@ ui <- dashboardPage(
         )
       ),
 
-      # ------------------------------------------------------------------------------
-      #                                    Page 4 - Spinner Wheel (Modifiée)
-      # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+#                                   Page 4
+# ------------------------------------------------------------------------------
+
       tabItem(
         tabName = "spinner_wheel",
         fluidRow(
@@ -277,6 +344,139 @@ ui <- dashboardPage(
 # ==============================================================================
 
 server <- function(input, output, session) {
+  
+  data = reactiveValues()
+
+
+# ------------------------------------------------------------------------------
+#                                    Page 1
+# ------------------------------------------------------------------------------
+  
+  output$table_data <- renderDT({
+    req(input$library_csv)
+    ext <- tools::file_ext(input$library_csv$name)
+    data$library <- if (ext == "xlsx") {
+      read_xlsx(input$library_csv$datapath, col_names = TRUE)
+    } else {
+      read.csv(input$library_csv$datapath, stringsAsFactors = FALSE)
+    }
+    datatable(data$library, options = list(scrollX = TRUE, pageLength = 50), rownames = FALSE)
+  })
+  
+
+# ------------------------------------------------------------------------------
+#                                    Page 2
+# ------------------------------------------------------------------------------
+  
+  output$conditional_input_genre_genre <- renderUI({
+    if (input$tri == "Genre") {
+      column(12,
+        selectInput(inputId = "genres", label = "Genre", choices = genres, selected = "Littérature")
+      )
+    }
+  })
+  
+  output$conditional_input_genre_tri <- renderUI({
+    if (input$tri == "Genre") {
+      column(12,
+        selectInput(inputId = "tri_genres", label = "Trier le genre par", choices = c("Auteur", "Date", "Titre"), selected = "Date")
+      )
+    }
+  })
+  
+  output$table_tri <- renderDT({
+    req(input$tri, input$library_csv)
+    
+    data_library_tri = data$library  %>%
+      arrange(!!sym(input$tri))
+    
+    if (!!sym(input$tri) == "Genre") {
+      req(input$genres, input$tri_genres)
+      
+      data_library_tri = data_library_tri %>%
+        filter(Genre == input$genres) %>%
+        arrange(!!sym(input$tri_genres))
+    }
+    
+    datatable(select(data_library_tri, "Titre", "Auteur", "Date"), options = list(scrollX = TRUE, pageLenght = 5), rownames = FALSE)
+      
+  })
+  
+  
+# ------------------------------------------------------------------------------
+#                                    Page 3
+# ------------------------------------------------------------------------------
+  
+  # Ne marche pas
+  
+  output$nb_livres <- renderText({
+    
+    paste0(nrow(data$library), " livres")
+    
+  })
+  
+  output$nb_livres_lus <- renderText({
+    
+    data$library_lus <- filter(data$library, Lu=="Oui" & Principal == "Oui")
+    
+    paste0(nrow(data$library_lus), " livres lus (", round(nrow(data$library_lus)/nrow(data$library)*100,2), " %)")
+    
+  })
+  
+  output$nb_livres_aimes <- renderText({
+    
+    data$library_livres_aimes <- data$library %>%
+      filter(Principal == "Oui", Favoris=="Oui")
+    
+    paste0(nrow(data$library_livres_aimes), " livres aimés (", round(nrow(data$library_livres_aimes)/nrow(data$library_lus)*100,2), " %)")
+    
+  })
+  
+  output$nb_auteurs <- renderText({
+    
+    paste0(length(unique(data$library[["Auteur"]])), " auteurs")
+    
+  })
+  
+  output$nb_genres <- renderText({
+    
+    paste0(length(unique(data$library[["Genre"]])), " genres")
+    
+  })
+  
+  output$nb_pages_lues <- renderText({
+    
+    data$pages_lues <- data$library %>%
+      filter(Lu == "Oui")
+    
+    paste0(round(sum(data$pages_lues[["Pages"]]),0), " pages lues (", round(sum(data$pages_lues[["Pages"]])/sum(data$library[["Pages"]])*100,2), " %)")
+    
+  })
+  
+  output$plot_livres_genres <- renderPlot({
+    
+    data$plot_livres_genres = data.frame("Genre" = character(), "Nombre" = numeric(), "Lus" = numeric())
+    
+    data$sort_genres = sort(unique(data$library[["Genre"]]), decreasing = TRUE)
+    
+    for (genre in data$sort_genres) {
+      data$plot_livres_genres = rbind(data$plot_livres_genre, cbind(genre, nrow(filter(data$library, Genre == genre)), nrow(filter(data$library, Genre == genre, Lu == "Oui"))))
+    }
+    
+    ggplot(data$plot_livres_genres, aes(x=factor(Genre, levels = sort(unique(livres$Genre), decreasing = TRUE)), y=Nombre)) + 
+      geom_bar(stat = "identity", fill="#ca084c") + 
+      coord_flip() +
+      labs(x = "Genres", y = "Pourcentage de livre lus", title = "") +
+      theme_bw() + 
+      theme(legend.position = "none") +
+      geom_label(label = paste0(data$plot_livres_genres[["Lu"]], " livres"), color="white", fill = "#ca084c")
+    
+  })
+  
+  
+# ------------------------------------------------------------------------------
+#                                    Page 4
+# ------------------------------------------------------------------------------
 
   # JavaScript pour initialiser et contrôler la roue
   observe({
@@ -377,108 +577,18 @@ server <- function(input, output, session) {
           }, 10);
         });
       ')
-
+      
       # Exécution du JavaScript
       shinyjs::runjs(js)
     })
   })
-
-  # ------------------------------------------------------------------------------
-  #                                    Page 1
-  # ------------------------------------------------------------------------------
-  output$table_data <- renderDT({
-    req(input$library_csv)
-    ext <- tools::file_ext(input$library_csv$name)
-    df <- if (ext == "xlsx") {
-      read_xlsx(input$library_csv$datapath, col_names = TRUE)
-    } else {
-      read.csv(input$library_csv$datapath, stringsAsFactors = FALSE)
-    }
-    datatable(df, options = list(scrollX = TRUE, pageLength = 50), rownames = FALSE)
-  })
-
-  # ------------------------------------------------------------------------------
-  #                                    Page 2
-  # ------------------------------------------------------------------------------
-  
-  output$conditional_input_genre <- renderUI({
-    if (input$tri == "Genre") {
-      column(8,
-        column(6,
-          selectInput(inputId = "genres", label = "Genre", choices = genres, selected = "Littérature")),
-        column(6,
-          selectInput(inputId = "tri_genres", label = "Trier le genre par", choices = c("Auteur", "Date", "Titre"), selected = "Date"))
-      )
-    }
-  })
-  output$table_tri <- renderDT({
-    req(input$tri, input$library_csv)
-    
-    data_library_tri = read_xlsx(input$library_csv$datapath, col_names = TRUE)  %>%
-      arrange(!!sym(input$tri))
-    
-    if (!!sym(input$tri) == "Genre") {
-      req(input$genres, input$tri_genres)
-      
-      data_library_tri = data_library_tri %>%
-        filter(Genre == input$genres) %>%
-        arrange(!!sym(input$tri_genres))
-    }
-    
-    datatable(select(data_library_tri, "Titre", "Auteur", "Date"), options = list(scrollX = TRUE, pageLenght = 5), rownames = FALSE)
-      
-  })
-  
-  
-# ------------------------------------------------------------------------------
-#                                    Page 3
-# ------------------------------------------------------------------------------
-  
-  # Ne marche pas
-  
-  output$nb_livres <- renderText(
-    req(input$library_csv)
-    
-    data_library = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
-      filter(data_library$Livre.principal == "Oui")
-    
-    paste0(nrow(data_library), " livres")
-    
-  )
-  
-  output$nb_livres_lus <- renderText({
-    req(input$library_csv)
-    
-    data_library_lus = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
-      filter(data_library_lus$Livre.principal == "Oui", data_library_lus$Lu=="Oui")
-    
-    paste0(nrow(data_library_lus), " livres lus")
-    
-  })
-  
-  output$nb_livres_aimes <- renderText({
-    req(input$library_csv)
-    
-    data_library = read_xlsx(input$library_csv$datapath, col_names = TRUE) %>%
-      filter(data_library$Livre.principal == "Oui", data_library$Favoris=="Oui")
-    
-    data=data_library
-    
-    paste0(nrow(data_library), " livres aimés", nrow(data))
-    
-  })
-  
-# ------------------------------------------------------------------------------
-#                                    Page 4
-# ------------------------------------------------------------------------------
-  
   
   
 }
 
 
 # ==============================================================================
-#                                   Run app
+#                           Lancement de l'application
 # ==============================================================================
 
 shinyApp(ui = ui, server = server)

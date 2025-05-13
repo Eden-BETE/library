@@ -3,4 +3,5 @@
 	- deuxième input - "Trier le genre par" : Auteur, Date, Titre : Date par défaut
 - Page 2 : afficher le dt table avec le tri effectué en fonction du premier input (que les trois premières colonnes) : OK
 - Page 2 : afficher le dt table avec le tri effectué et le thème correspondant si "Genres" choisi dans le premier input : OK
+- Page 3 : afficher les stats de livres, livres lus et livres aimés
 - Page 4 : Faire la spinner wheel
