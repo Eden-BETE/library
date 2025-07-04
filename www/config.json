@@ -1,0 +1,10 @@
+{
+    "link": [
+        {
+            "link_to_credentials": "www/credentials.xlsx",
+            "link_to_css": "www/custom.css",
+            "link_to_data": "bibliothèques/",
+            "link_to_livres": "www/livres.xlsx"
+        }
+    ]
+}
