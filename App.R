@@ -148,7 +148,6 @@ ui <- dashboardPage(
 
     # Chargez les scripts externes pour Chart.js
     tags$head(
-      tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
       tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"),
       tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.1.0/chartjs-plugin-datalabels.min.js")
     ),
