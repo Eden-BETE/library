@@ -3,8 +3,20 @@
         {
             "link_to_credentials": "www/credentials.xlsx",
             "link_to_css": "www/custom.css",
-            "link_to_data": "bibliothèques/",
+            "link_to_data": "data/",
             "link_to_livres": "www/livres.xlsx"
+        }
+    ],
+    "s3_key": [
+        {
+            "key": "AKIA47GB7XIHE3Q32OFX",
+            "private_key": "I8Z0r+KzqyND7eW+2L6o5E5eaWbEQ2VRJpOshY7Y"
+        }
+    ],
+    "s3": [
+        {
+            "region": "eu-west-3",
+            "bucket": "librarydnss-shiny"
         }
     ]
 }
